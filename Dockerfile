@@ -274,14 +274,6 @@ RUN set -x; \
 	&& git clone --single-branch -b $MW_VERSION https://gerrit.wikimedia.org/r/mediawiki/extensions/GlobalNotice $MW_HOME/extensions/GlobalNotice \
 	&& cd $MW_HOME/extensions/GlobalNotice \
 	&& git checkout -q f86637d27e6be7c60ec12bb8859f4b76cceb1be2 \
-	# GoogleAnalyticsMetrics
-	&& git clone --single-branch -b $MW_VERSION https://gerrit.wikimedia.org/r/mediawiki/extensions/GoogleAnalyticsMetrics $MW_HOME/extensions/GoogleAnalyticsMetrics \
-	&& cd $MW_HOME/extensions/GoogleAnalyticsMetrics \
-	&& git checkout -q c292c17b2e1f44f11a82323b48ec2911c384a085 \
-	# GoogleDocCreator (v. 2.0)
-	&& git clone --single-branch -b master https://gerrit.wikimedia.org/r/mediawiki/extensions/GoogleDocCreator $MW_HOME/extensions/GoogleDocCreator \
-	&& cd $MW_HOME/extensions/GoogleDocCreator \
-	&& git checkout -q a606f4390e4265de227a79a353fee902e6703bd5 \
 	# Graph
 	&& git clone --single-branch -b $MW_VERSION https://gerrit.wikimedia.org/r/mediawiki/extensions/Graph $MW_HOME/extensions/Graph \
 	&& cd $MW_HOME/extensions/Graph \
@@ -541,12 +533,6 @@ COPY _sources/extensions/GTag1.2.0.tar.gz /tmp/
 RUN set -x; \
     tar -xvf /tmp/GTag*.tar.gz -C $MW_HOME/extensions \
     && rm /tmp/GTag*.tar.gz
-
-# GoogleAnalyticsMetrics: Resolve composer conflicts, so placed before the composer install statement!
-COPY _sources/patches/core-fix-composer-for-GoogleAnalyticsMetrics.diff /tmp/core-fix-composer-for-GoogleAnalyticsMetrics.diff
-RUN set -x; \
-	cd $MW_HOME \
-	&& git apply /tmp/core-fix-composer-for-GoogleAnalyticsMetrics.diff
 
 # Composer dependencies
 COPY _sources/configs/composer.canasta.json $MW_HOME/composer.local.json
