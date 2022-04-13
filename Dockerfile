@@ -274,14 +274,6 @@ RUN set -x; \
 	&& git clone --single-branch -b $MW_VERSION https://gerrit.wikimedia.org/r/mediawiki/extensions/GlobalNotice $MW_HOME/extensions/GlobalNotice \
 	&& cd $MW_HOME/extensions/GlobalNotice \
 	&& git checkout -q f86637d27e6be7c60ec12bb8859f4b76cceb1be2 \
-	# GoogleAnalyticsMetrics
-	&& git clone --single-branch -b $MW_VERSION https://gerrit.wikimedia.org/r/mediawiki/extensions/GoogleAnalyticsMetrics $MW_HOME/extensions/GoogleAnalyticsMetrics \
-	&& cd $MW_HOME/extensions/GoogleAnalyticsMetrics \
-	&& git checkout -q c292c17b2e1f44f11a82323b48ec2911c384a085 \
-	# GoogleDocCreator (v. 2.0)
-	&& git clone --single-branch -b master https://gerrit.wikimedia.org/r/mediawiki/extensions/GoogleDocCreator $MW_HOME/extensions/GoogleDocCreator \
-	&& cd $MW_HOME/extensions/GoogleDocCreator \
-	&& git checkout -q a606f4390e4265de227a79a353fee902e6703bd5 \
 	# Graph
 	&& git clone --single-branch -b $MW_VERSION https://gerrit.wikimedia.org/r/mediawiki/extensions/Graph $MW_HOME/extensions/Graph \
 	&& cd $MW_HOME/extensions/Graph \
@@ -542,29 +534,14 @@ RUN set -x; \
     tar -xvf /tmp/GTag*.tar.gz -C $MW_HOME/extensions \
     && rm /tmp/GTag*.tar.gz
 
-# GoogleAnalyticsMetrics: Resolve composer conflicts, so placed before the composer install statement!
-COPY _sources/patches/core-fix-composer-for-GoogleAnalyticsMetrics.diff /tmp/core-fix-composer-for-GoogleAnalyticsMetrics.diff
-RUN set -x; \
-	cd $MW_HOME \
-	&& git apply /tmp/core-fix-composer-for-GoogleAnalyticsMetrics.diff
-
 # Composer dependencies
 COPY _sources/configs/composer.canasta.json $MW_HOME/composer.local.json
 RUN set -x; \
 	cd $MW_HOME \
 	&& composer update --no-dev \
 	# We need the 2nd update for SMW dependencies
-	&& composer update --no-dev \
-    # Fix up future use of canasta-extensions directory for composer autoload
-    && sed -i 's/extensions/canasta-extensions/g' $MW_HOME/vendor/composer/autoload_static.php \
-    && sed -i 's/extensions/canasta-extensions/g' $MW_HOME/vendor/composer/autoload_files.php \
-    && sed -i 's/extensions/canasta-extensions/g' $MW_HOME/vendor/composer/autoload_classmap.php \
-    && sed -i 's/extensions/canasta-extensions/g' $MW_HOME/vendor/composer/autoload_psr4.php \
-    && sed -i 's/skins/canasta-skins/g' $MW_HOME/vendor/composer/autoload_static.php \
-    && sed -i 's/skins/canasta-skins/g' $MW_HOME/vendor/composer/autoload_files.php \
-    && sed -i 's/skins/canasta-skins/g' $MW_HOME/vendor/composer/autoload_classmap.php \
-    && sed -i 's/skins/canasta-skins/g' $MW_HOME/vendor/composer/autoload_psr4.php
-
+	&& composer update --no-dev
+        
 # Patches
 
 # SemanticResultFormats, see https://github.com/WikiTeq/SemanticResultFormats/compare/master...WikiTeq:fix1_35
@@ -603,45 +580,27 @@ RUN set -x; \
     cd $MW_HOME/extensions/SocialProfile \
     && git apply /tmp/SocialProfile-disable-fields.patch
 
-COPY _sources/patches/bootstrap-path.patch /tmp/bootstrap-path.patch
-RUN set -x; \
-    cd $MW_HOME/extensions/Bootstrap \
-    && git apply /tmp/bootstrap-path.patch
-
-COPY _sources/patches/chameleon-path.patch /tmp/chameleon-path.patch
-RUN set -x; \
-    cd $MW_HOME/skins/chameleon \
-    && git apply /tmp/chameleon-path.patch
-
 # Cleanup all .git leftovers
 RUN set -x; \
     cd $MW_HOME \
-    && find . \( -name ".git" -o -name ".gitignore" -o -name ".gitmodules" -o -name ".gitattributes" \) -exec rm -rf -- {} +
+    && find . \( -name ".git" -o -name ".gitignore" -o -name ".gitmodules" -o -name ".gitattributes" \) -exec rm -rf -- {} + || true
 
 # Generate list of installed extensions
 RUN set -x; \
 	cd $MW_HOME/extensions \
-    && for i in $(ls -d */); do echo "#cfLoadExtension('${i%%/}');"; done > $MW_ORIGIN_FILES/installedExtensions.txt \
+    && for i in $(ls -d */); do echo "#wfLoadExtension('${i%%/}');"; done > $MW_ORIGIN_FILES/installedExtensions.txt \
     # Dirty hack for SemanticMediawiki
-    && sed -i "s/#cfLoadExtension('SemanticMediaWiki');/#enableSemantics('localhost');/g" $MW_ORIGIN_FILES/installedExtensions.txt \
+    && sed -i "s/#wfLoadExtension('SemanticMediaWiki');/#enableSemantics('localhost');/g" $MW_ORIGIN_FILES/installedExtensions.txt \
     && cd $MW_HOME/skins \
-    && for i in $(ls -d */); do echo "#cfLoadSkin('${i%%/}');"; done > $MW_ORIGIN_FILES/installedSkins.txt \
+    && for i in $(ls -d */); do echo "#wfLoadSkin('${i%%/}');"; done > $MW_ORIGIN_FILES/installedSkins.txt \
     #Loads Vector skin by default in the LocalSettings.php
-    && sed -i "s/#cfLoadSkin('Vector');/cfLoadSkin('Vector');/" $MW_ORIGIN_FILES/installedSkins.txt
+    && sed -i "s/#wfLoadSkin('Vector');/wfLoadSkin('Vector');/" $MW_ORIGIN_FILES/installedSkins.txt
 
 # Move files around
 RUN set -x; \
 	# Move files to $MW_ORIGIN_FILES directory
     mv $MW_HOME/images $MW_ORIGIN_FILES/ \
     && mv $MW_HOME/cache $MW_ORIGIN_FILES/ \
-    # Move extensions and skins to prefixed directories not intended to be volumed in
-    && mv $MW_HOME/extensions $MW_HOME/canasta-extensions \
-    && mv $MW_HOME/skins $MW_HOME/canasta-skins \
-    # Permissions
-    && chown $WWW_USER:$WWW_GROUP -R $MW_HOME/canasta-extensions \
-    && chmod g+w -R $MW_HOME/canasta-extensions \
-    && chown $WWW_USER:$WWW_GROUP -R $MW_HOME/canasta-skins \
-    && chmod g+w -R $MW_HOME/canasta-skins \
     # Create symlinks from $MW_VOLUME to the wiki root for images and cache directories
     && ln -s $MW_VOLUME/images $MW_HOME/images \
     && ln -s $MW_VOLUME/cache $MW_HOME/cache
