@@ -20,8 +20,6 @@ if [[ -n "$SITEMAP_DIR" && "$SITEMAP_DIR" != "/"* ]]; then
   SITEMAP_DIR="/$SITEMAP_DIR"
 fi
 
-GOOGLE_PING_URL="https://www.google.com/ping?sitemap=${SITE_SERVER}${MW_SCRIPT_PATH}/sitemap${SITEMAP_DIR}/sitemap-index-${MW_SITEMAP_IDENTIFIER}.xml"
-
 echo Starting sitemap generator...
 # Wait three minutes after the server starts up to give other processes time to get started
 sleep 30
@@ -34,10 +32,6 @@ while true; do
       --server=$MW_SITE_SERVER \
       --skip-redirects \
       --identifier=$MW_SITEMAP_IDENTIFIER
-
-    # sending the sitemap to google
-    echo "sending to Google -> $GOOGLE_PING_URL"
-    curl --silent "$GOOGLE_PING_URL" > /dev/null
 
     # Wait some seconds to let the CPU do other things, like handling web requests, etc
     echo mwsitemapgen waits for "$SLEEPDAYS" seconds...
